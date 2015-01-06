@@ -24,6 +24,13 @@ def parse_argv(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False)
 
+    parser.add_argument('images', type=str, action='append', nargs='+',
+                        help="image files to sew together",
+                        metavar="IMAGE")
+    parser.add_argument('-o', '--output', type=str, default=None,
+                        help="name of the output image file",
+                        metavar="OUTPUT")
+
     misc_group = parser.add_argument_group("Miscellaneous", "Other options")
     misc_group.add_argument('--version', action='version', version=__version__)
     misc_group.add_argument('-h', '--help', action='help',

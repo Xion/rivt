@@ -49,17 +49,17 @@ def parse_argv(argv):
 def sew(images, output=sys.stdout):
     max_height = max(img.size[1] for img in images)
     adjusted_sizes = [
-        (img.size[0] * (img.size[1] / float(max_height)), max_height)
+        (int(img.size[0] * (img.size[1] / float(max_height))), max_height)
         for img in images]
-    total_width = int(sum(width for width, _ in adjusted_sizes))
+    total_width = sum(width for width, _ in adjusted_sizes)
 
     result = Image.new('RGB', (total_width, max_height))
 
-    # TODO(xion): support resizing of source images to fit adjusted_size
+    # TODO(xion): allow to specify resampling filter
     x = 0
-    for i, (image, (width, _)) in enumerate(zip(images, adjusted_sizes)):
-        result.paste(image, (int(x), 0))
-        x += width
+    for i, (image, size) in enumerate(zip(images, adjusted_sizes)):
+        result.paste(image.resize(size, Image.BILINEAR), (x, 0))
+        x += size[0]
 
     # TODO(xion): decide on output format based on input formats
     result.save(output, 'PNG')

@@ -28,6 +28,7 @@ def main(argv=sys.argv):
         result_image.show()
     else:
         # TODO(xion): decide on output format based on input formats
+        # and/or, more importantly, the extension of output file
         result_image.save(args.output, 'PNG')
 
 
@@ -37,6 +38,7 @@ def parse_argv(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False)
 
+    # TODO(xion): support URLs as IMAGE arguments
     input_group = parser.add_argument_group("Input", "Source images to merge")
     input_group.set_defaults(axis=Axis.HORIZONTAL)
     input_group.add_argument('images', type=str, nargs='+',

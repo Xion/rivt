@@ -5,6 +5,7 @@ rivt :: Ludicrously simple image merger
 from __future__ import print_function
 
 import argparse
+from enum import IntEnum
 from itertools import chain
 import sys
 
@@ -21,7 +22,7 @@ def main(argv=sys.argv):
     args = parse_argv(argv)
 
     source_images = list(map(Image.open, args.images))
-    result_image = sew(source_images)
+    result_image = sew(source_images, args.axis)
 
     if args.show:
         result_image.show()
@@ -36,9 +37,18 @@ def parse_argv(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False)
 
-    parser.add_argument('images', type=str, nargs='+',
-                        help="image files to sew together",
-                        metavar="IMAGE")
+    input_group = parser.add_argument_group("Input", "Source images to merge")
+    input_group.set_defaults(axis=Axis.HORIZONTAL)
+    input_group.add_argument('images', type=str, nargs='+',
+                             help="image files to sew together",
+                             metavar="IMAGE")
+    axis_group = input_group.add_mutually_exclusive_group()
+    axis_group.add_argument('--horz', '--horizontal', dest='axis',
+                            action='store_const', const=Axis.HORIZONTAL,
+                            help="arrange the images horizontally")
+    axis_group.add_argument('--vertical', dest='axis',
+                            action='store_const', const=Axis.VERTICAL,
+                            help="arrange the images vertically")
 
     result_group = parser.add_argument_group(
         "Result", "What to do with resulting image") \
@@ -69,21 +79,41 @@ def parse_argv(argv):
     return parser.parse_args(argv[1:])
 
 
-def sew(images):
-    max_height = max(img.size[1] for img in images)
-    adjusted_sizes = [
-        (int(img.size[0] * (img.size[1] / float(max_height))), max_height)
-        for img in images]
-    total_width = sum(width for width, _ in adjusted_sizes)
+class Axis(IntEnum):
+    HORIZONTAL = 0  # X coordinate
+    VERTICAL = 1  # Y coordinate
 
-    result = Image.new('RGB', (total_width, max_height))
+
+def sew(images, axis=Axis.HORIZONTAL):
+    """Sews several images together, pasting it into final image side-by-side.
+
+    :param axis: Axis along which the images should be arranged.
+
+    :return: PIL :class:`Image` or iterable thereof (if result is an animation)
+    """
+    # 'main' and 'cross' axis are defined analogously like in CSS3 flexbox,
+    # assuming that we treat images as the child elements
+    main_size = lambda arg: getattr(arg, 'size', arg)[axis]
+    cross_size = lambda arg: getattr(arg, 'size', arg)[1 - axis]
+    xy_size = lambda main, cross: (main if axis == Axis.HORIZONTAL else cross,
+                                   main if axis == Axis.VERTICAL else cross)
+
+    max_cross_size = max(cross_size(img) for img in images)
+    adjusted_sizes = [
+        xy_size(int(main_size(img) * cross_size(img) / float(max_cross_size)),
+                max_cross_size)
+        for img in images]
+    total_main_size = sum(map(main_size, adjusted_sizes))
+
+    result = Image.new('RGB', xy_size(total_main_size, max_cross_size))
 
     # TODO(xion): allow to specify resampling filter
-    x = 0
-    for i, (image, size) in enumerate(zip(images, adjusted_sizes)):
-        result.paste(image.resize(size, Image.BILINEAR), (x, 0))
-        x += size[0]
+    pos = 0
+    for image, size in zip(images, adjusted_sizes):
+        result.paste(image.resize(size, Image.BILINEAR), xy_size(pos, 0))
+        pos += main_size(size)
 
+    # TODO(xion): support sewing animated GIFs
     return result
 
 

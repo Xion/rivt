@@ -5,6 +5,7 @@ rivt :: Ludicrously simple image merger
 from __future__ import print_function
 
 import argparse
+from collections import Sequence
 from enum import IntEnum
 from itertools import chain
 import sys
@@ -118,6 +119,44 @@ def sew(images, axis=Axis.HORIZONTAL):
 
     # TODO(xion): support sewing animated GIFs
     return result
+
+
+class Frames(Sequence):
+    """Object holding individual frames of a GIF animated image.
+
+    :param image: PIL :class:`Image` to read the frames from
+    """
+    def __init__(self, image):
+        frames = []
+        while True:
+            frames.append(image.copy())
+            try:
+                image.seek(image.tell() + 1)
+            except EOFError:
+                break
+        self._frames = frames
+
+    def __getitem__(self, idx):
+        return self._frames[idx]
+
+    def __len__(self):
+        return len(self._frames)
+
+    def duration(self, frame):
+        """Returns duration of a frame in seconds, if known."""
+        if isinstance(frame, int):
+            frame = self._frames[frame]
+        if 'duration' in frame.info:
+            return int(frame.info['duration']) / 1000.0
+
+    @property
+    def loop_count(self):
+        """Animation loop counter.
+
+        1 means no looping (play once). 0 means repeat indefinitely.
+        ``None`` means unknown or not available.
+        """
+        return self._frames[0].info.get('loop', None)
 
 
 if __name__ == '__main__':

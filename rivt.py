@@ -101,7 +101,7 @@ def sew(images, axis=Axis.HORIZONTAL):
     # rescale images to fit the smallest one (as per its cross size)
     min_cross_size = min(cross_size(img) for img in images)
     adjusted_sizes = [
-        xy_size(int(main_size(img) * cross_size(img) / float(min_cross_size)),
+        xy_size(int(main_size(img) * float(min_cross_size) / cross_size(img)),
                 min_cross_size)
         for img in images]
     total_main_size = sum(map(main_size, adjusted_sizes))

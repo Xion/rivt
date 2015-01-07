@@ -91,21 +91,22 @@ def sew(images, axis=Axis.HORIZONTAL):
 
     :return: PIL :class:`Image` or iterable thereof (if result is an animation)
     """
-    # 'main' and 'cross' axis are defined analogously like in CSS3 flexbox,
-    # assuming that we treat images as the child elements
+    # 'main' and 'cross' axis are defined analogously to CSS3 flexbox,
+    # assuming that we treat images as children of an element with display:flex
     main_size = lambda arg: getattr(arg, 'size', arg)[axis]
     cross_size = lambda arg: getattr(arg, 'size', arg)[1 - axis]
     xy_size = lambda main, cross: (main if axis == Axis.HORIZONTAL else cross,
                                    main if axis == Axis.VERTICAL else cross)
 
-    max_cross_size = max(cross_size(img) for img in images)
+    # rescale images to fit the smallest one (as per its cross size)
+    min_cross_size = min(cross_size(img) for img in images)
     adjusted_sizes = [
-        xy_size(int(main_size(img) * cross_size(img) / float(max_cross_size)),
-                max_cross_size)
+        xy_size(int(main_size(img) * cross_size(img) / float(min_cross_size)),
+                min_cross_size)
         for img in images]
     total_main_size = sum(map(main_size, adjusted_sizes))
 
-    result = Image.new('RGB', xy_size(total_main_size, max_cross_size))
+    result = Image.new('RGB', xy_size(total_main_size, min_cross_size))
 
     # TODO(xion): allow to specify resampling filter
     pos = 0

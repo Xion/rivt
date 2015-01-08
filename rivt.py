@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-rivt :: Ludicrously simple image merger
+rivt :: Simple image merger
 """
 from __future__ import print_function
 
@@ -15,7 +15,7 @@ from PIL import Image
 
 
 __version__ = "0.0.1"
-__description__ = "Ludicrously simple image merger"
+__description__ = "Simple image merger"
 __author__ = "Karol Kuczmarski"
 __license__ = "GPLv3"
 

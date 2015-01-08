@@ -5,11 +5,12 @@ rivt :: Ludicrously simple image merger
 from __future__ import print_function
 
 import argparse
-from collections import Sequence
+from collections import Iterable, Sequence
 from enum import IntEnum
 from itertools import chain
 import sys
 
+from images2gif import GifWriter
 from PIL import Image
 
 
@@ -82,6 +83,8 @@ def parse_argv(argv):
     return parser.parse_args(argv[1:])
 
 
+# Main algorithm
+
 class Axis(IntEnum):
     HORIZONTAL = 0  # X coordinate
     VERTICAL = 1  # Y coordinate
@@ -121,19 +124,31 @@ def sew(images, axis=Axis.HORIZONTAL):
     return result
 
 
+ # Handling animation
+
 class Frames(Sequence):
     """Object holding individual frames of a GIF animated image.
 
-    :param image: PIL :class:`Image` to read the frames from
+    :param image: PIL :class:`Image` to read the frames from,
+                  or an image for the first frame
+
+    Further positional arguments are optional additional images
+    to put into the frame
     """
-    def __init__(self, image):
+    def __init__(self, image, **more):
         frames = []
-        while True:
-            frames.append(image.copy())
-            try:
-                image.seek(image.tell() + 1)
-            except EOFError:
-                break
+
+        if more:
+            frames.append(image)
+            frames.extend(more)
+        else:
+            while True:
+                frames.append(image.copy())
+                try:
+                    image.seek(image.tell() + 1)
+                except EOFError:
+                    break
+
         self._frames = frames
 
     def __getitem__(self, idx):
@@ -142,12 +157,18 @@ class Frames(Sequence):
     def __len__(self):
         return len(self._frames)
 
-    def duration(self, frame):
-        """Returns duration of a frame in seconds, if known."""
+    def duration(self, frame, value=None):
+        """Returns duration of a frame in seconds, if known,
+        or sets it to given value.
+        """
         if isinstance(frame, int):
             frame = self._frames[frame]
-        if 'duration' in frame.info:
-            return int(frame.info['duration']) / 1000.0
+
+        if value is None:
+            if 'duration' in frame.info:
+                return int(frame.info['duration']) / 1000.0
+        else:
+            frame.info['duration'] = value * 1000
 
     @property
     def durations(self):
@@ -170,6 +191,10 @@ class Frames(Sequence):
         """
         return self._frames[0].info.get('loop', None)
 
+    @loop_count.setter
+    def loop_count(self, value):
+        self._frames[0].info['loop'] = value
+
     @property
     def total_duration(self):
         """Total duration of the animation, including looping."""
@@ -177,6 +202,29 @@ class Frames(Sequence):
         if d is None or self.loop_count is None:
             return None
         return float('inf') if self.loop_count == 0 else d * self.loop_count
+
+
+def save_gif(fp, frames):
+    """Saves animated GIF consisting of given frames.
+
+    :param frames: :class:`Frames` object or iterable of PIL images
+    """
+    if isinstance(frames, Frames):
+        loop_count = frames.loop_count
+        frames = list(frames)  # get list of PIL images
+    elif isinstance(frames, Iterable):
+        loop_count = 0  # indefinitely
+    else:
+        raise ValueError("invalid frames object of type %r" % type(frame))
+
+    durations = [frame.info['duration'] for frame in frames]
+
+    gif_writer = GifWriter()
+    gif_writer.transparency = False
+    images, _, _ = gif_writer.handleSubRectangles(frames, True)
+
+    frame_dispose = 1  # leave frame in place after it ends
+    gif_writer.writeGifToFile(fp, images, durations, loop_count, frame_dispose)
 
 
 if __name__ == '__main__':

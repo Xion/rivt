@@ -150,13 +150,33 @@ class Frames(Sequence):
             return int(frame.info['duration']) / 1000.0
 
     @property
+    def durations(self):
+        """Iterable of all frame durations."""
+        return map(self.duration, self._frames)
+
+    @property
+    def animation_duration(self):
+        """Duration of a single playback of the animation."""
+        return sum(self.durations) \
+            if all(d is not None for d in self.durations) \
+            else None
+
+    @property
     def loop_count(self):
-        """Animation loop counter.
+        """Animation loop count.
 
         1 means no looping (play once). 0 means repeat indefinitely.
         ``None`` means unknown or not available.
         """
         return self._frames[0].info.get('loop', None)
+
+    @property
+    def total_duration(self):
+        """Total duration of the animation, including looping."""
+        d = self.animation_duration
+        if d is None or self.loop_count is None:
+            return None
+        return float('inf') if self.loop_count == 0 else d * self.loop_count
 
 
 if __name__ == '__main__':

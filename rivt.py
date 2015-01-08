@@ -10,7 +10,7 @@ from enum import IntEnum
 from itertools import chain
 import sys
 
-from images2gif import GifWriter
+from images2gif import images2gif  # GIFception!
 from PIL import Image
 
 
@@ -91,11 +91,23 @@ class Axis(IntEnum):
 
 
 def sew(images, axis=Axis.HORIZONTAL):
-    """Sews several images together, pasting it into final image side-by-side.
+    """Sews several images together, pasting it into final image side by side.
 
     :param axis: Axis along which the images should be arranged.
 
-    :return: PIL :class:`Image` or iterable thereof (if result is an animation)
+    :return: PIL :class:`Image` or :class:`Frames` (if result is an animation).
+    """
+    # TODO(xion): support sewing animated GIFs
+    return sew_static_images(images, axis)
+
+
+def sew_static_images(images, axis=Axis.HORIZONTAL):
+    """Sews several still images together, pasting it into final image
+    side by side, one after another.
+
+    :param axis: Axis along which the images should be arranged.
+
+    :return: PIL :class:`Image`
     """
     # 'main' and 'cross' axis are defined analogously to CSS3 flexbox,
     # assuming that we treat images as children of an element with display:flex
@@ -120,11 +132,10 @@ def sew(images, axis=Axis.HORIZONTAL):
         result.paste(image.resize(size, Image.BILINEAR), xy_size(pos, 0))
         pos += main_size(size)
 
-    # TODO(xion): support sewing animated GIFs
     return result
 
 
- # Handling animation
+ # Handling animated GIFs
 
 class Frames(Sequence):
     """Object holding individual frames of a GIF animated image.
@@ -219,7 +230,7 @@ def save_gif(fp, frames):
 
     durations = [frame.info['duration'] for frame in frames]
 
-    gif_writer = GifWriter()
+    gif_writer = images2gif.GifWriter()
     gif_writer.transparency = False
     images, _, _ = gif_writer.handleSubRectangles(frames, True)
 

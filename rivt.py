@@ -8,6 +8,7 @@ import argparse
 from collections import Iterable, Sequence
 from enum import IntEnum
 from itertools import chain
+from operator import itemgetter
 import sys
 
 from images2gif import images2gif  # GIFception!
@@ -95,10 +96,17 @@ def sew(images, axis=Axis.HORIZONTAL):
 
     :param axis: Axis along which the images should be arranged.
 
-    :return: PIL :class:`Image` or :class:`Frames` (if result is an animation).
+    :return: PIL :class:`Image`, or :class:`Animation`
+             (if the result is an animation).
     """
-    # TODO(xion): support sewing animated GIFs
-    return sew_static_images(images, axis)
+    if len(images) == 1:
+        return images[0]
+
+    animations = list(map(Animation, images))
+    if all(len(anim) == 1 for anim in animations):
+        return sew_static_images(images, axis)
+    else:
+        return sew_animations(animations, axis)
 
 
 def sew_static_images(images, axis=Axis.HORIZONTAL):
@@ -135,9 +143,88 @@ def sew_static_images(images, axis=Axis.HORIZONTAL):
     return result
 
 
+def sew_animations(animations, axis=Axis.HORIZONTAL):
+    """Sew several animations together, arranging it into a final animation
+    in a side-by-side fashion.
+
+    :param axis: Axis along which the animations should be arranged.
+
+    :return: :class:`Animation`
+    """
+    result_frames = []  # list of PIL :class:`Image` objects
+
+    time = 0  # in seconds
+    time_indices = [0] * len(animations)  # also in seconds
+    frame_indices = [0] * len(animations)
+    loop_counters = [0] * len(animations)
+
+    # determine the total duration of the resulting animation;
+    # finite animations shall be played fully, whereas infinite ones
+    # only as few times as necesary for synchronization
+    # (within 0.1 second tolerance)
+    individual_durations = [
+        anim.total_duration if anim.is_finite else anim.animation_duration
+        for anim in animations]
+    result_duration = reduce(
+        lcm, (round(d, 1) * 10 for d in individual_durations)) / 10
+
+    # "play" all the animations simultaneously and create new, sewn frame
+    # whenever any of the continuent frames change
+    while time < result_duration:
+        sewn_frame = sew_static_images(
+            [anim[idx] for anim, idx in zip(animations, frame_indices)], axis)
+        result_frames.append(sewn_frame)
+
+        # find out what animation should have its frame changed next
+        # TODO(xion): if the time increment is very small,
+        # elide it, so that we don't produce too many frames with small changes
+        next_frame_anim_index, new_time = min(
+            ((i, time_index + anim.duration(frame_index))
+             for i, (anim, time_index, frame_index) in enumerate(
+                zip(animations, time_indices, frame_indices))),
+            key=itemgetter(1))
+
+        # advance the time, as counted for this animation and globally
+        next_frame_anim = animations[next_frame_anim_index]
+        time_indices[next_frame_anim_index] += \
+            next_frame_anim.duration(frame_indices[next_frame_anim_index])
+        time = new_time
+
+        # advance to a next frame, taking looping into account
+        next_frame_index = frame_indices[next_frame_anim_index] + 1
+        if next_frame_index >= len(next_frame_anim):
+            loop_count = next_frame_anim.loop_count or sys.maxsize
+            if loop_counters[next_frame_anim_index] < loop_count:
+                loop_counters[next_frame_anim_index] += 1
+                next_frame_index %= len(next_frame_anim)
+            else:
+                next_frame_index -= 1  # reached the end of this animation
+        frame_indices[next_frame_anim_index] = next_frame_index
+
+    # (note that ideally, when finite and infinite animations are combined,
+    # we'd want to start looping after all the finite ones finish;
+    # unfortunately, GIF only supports looping of the whole animation,
+    # so the next best thing is to make one infinite animation
+    # loop the whole thing)
+    result = Animation(result_frames)
+    result.loop_count = 1 if all(anim.is_finite for anim in animations) else 0
+    return result
+
+
+def lcm(a, b):
+    """Compute the least common multiple of two numbers."""
+    product = a * b
+
+    while b:
+        a, b = b, a % b
+    gcd = a
+
+    return product // gcd
+
+
  # Handling animated GIFs
 
-class Frames(Sequence):
+class Animation(Sequence):
     """Object holding individual frames of a GIF animated image.
 
     :param image: PIL :class:`Image` to read the frames from,
@@ -214,13 +301,17 @@ class Frames(Sequence):
             return None
         return float('inf') if self.loop_count == 0 else d * self.loop_count
 
+    @property
+    def is_finite(self):
+        return (self.loop_count or 0) > 0
+
 
 def save_gif(fp, frames):
     """Saves animated GIF consisting of given frames.
 
-    :param frames: :class:`Frames` object or iterable of PIL images
+    :param frames: :class:`Animation` object or iterable of PIL images
     """
-    if isinstance(frames, Frames):
+    if isinstance(frames, Animation):
         loop_count = frames.loop_count
         frames = list(frames)  # get list of PIL images
     elif isinstance(frames, Iterable):

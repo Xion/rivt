@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 rivt :: Simple image merger
 """
@@ -15,24 +14,14 @@ from images2gif import images2gif  # GIFception!
 from PIL import Image
 
 
+# TODO(xion): split into more modules
+
+
 __version__ = "0.0.1"
 __description__ = "Simple image merger"
 __author__ = "Karol Kuczmarski"
 __license__ = "GPLv3"
 
-
-def main(argv=sys.argv):
-    args = parse_argv(argv)
-
-    source_images = list(map(Image.open, args.images))
-    result_image = sew(source_images, args.axis)
-
-    if args.show:
-        result_image.show()
-    else:
-        # TODO(xion): decide on output format based on input formats
-        # and/or, more importantly, the extension of output file
-        result_image.save(args.output, 'PNG')
 
 
 def parse_argv(argv):
@@ -154,6 +143,9 @@ def sew_animations(animations, axis=Axis.HORIZONTAL):
     result_frames = []  # list of PIL :class:`Image` objects
 
     time = 0  # in seconds
+
+    # TODO(xion): extract a namedtuple with AnimationState
+    # and keep a single array of that
     time_indices = [0] * len(animations)  # also in seconds
     frame_indices = [0] * len(animations)
     loop_counters = [0] * len(animations)
@@ -327,7 +319,3 @@ def save_gif(fp, frames):
 
     frame_dispose = 1  # leave frame in place after it ends
     gif_writer.writeGifToFile(fp, images, durations, loop_count, frame_dispose)
-
-
-if __name__ == '__main__':
-    sys.exit(main() or 0)

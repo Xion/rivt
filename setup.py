@@ -7,7 +7,7 @@ rivt
 """
 import ast
 import os
-from setuptools import setup
+from setuptools import find_packages, setup
 import sys
 
 
@@ -72,15 +72,12 @@ def read_requirements(filename='requirements.txt'):
 
 # setup() call
 
-SCRIPT = 'rivt.py'
-
 install_requires = read_requirements()
 if sys.version_info < (3, 4):
     install_requires.extend(read_requirements('py33'))
 
-tags = read_tags(SCRIPT)
+tags = read_tags(os.path.join('rivt', '__init__.py'))
 __doc__ = __doc__.format(**tags)
-
 
 setup(
     name='rivt',
@@ -100,9 +97,9 @@ setup(
         "Topic :: Utilities",
     ],
 
-    scripts=[SCRIPT],
+    packages=find_packages(exclude=['tests']),
     entry_points={
-        'console_scripts': ['rivt=rivt:main'],
+        'console_scripts': ['rivt=rivt.__main__:main'],
     },
 
     install_requires=install_requires,

@@ -317,7 +317,7 @@ def save_gif(fp, frames):
     elif isinstance(frames, Iterable):
         loop_count = 0  # indefinitely
     else:
-        raise ValueError("invalid frames object of type %r" % type(frame))
+        raise ValueError("invalid frames object of type %r" % type(frames))
 
     durations = [frame.info['duration'] for frame in frames]
 

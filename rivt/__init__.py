@@ -5,13 +5,14 @@ from __future__ import print_function
 
 import argparse
 from collections import Iterable, Sequence
-from enum import IntEnum
 from itertools import chain
 from operator import itemgetter
 import sys
 
 from images2gif import images2gif  # GIFception!
 from PIL import Image
+
+from rivt.data import Axis
 
 
 # TODO(xion): split into more modules
@@ -74,11 +75,6 @@ def parse_argv(argv):
 
 
 # Main algorithm
-
-class Axis(IntEnum):
-    HORIZONTAL = 0  # X coordinate
-    VERTICAL = 1  # Y coordinate
-
 
 def sew(images, axis=Axis.HORIZONTAL):
     """Sews several images together, pasting it into final image side by side.

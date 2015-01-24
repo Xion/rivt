@@ -6,7 +6,8 @@ import sys
 
 from PIL import Image
 
-from rivt import parse_argv, sew
+from rivt import sew
+from rivt.args import parse_argv
 
 
 def main(argv=sys.argv):

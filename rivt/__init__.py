@@ -9,7 +9,7 @@ import sys
 from PIL import Image
 
 from rivt.data import Axis
-from rivt.gif import Animation
+from rivt.util.gif import Animation
 
 
 # TODO(xion): split into more modules

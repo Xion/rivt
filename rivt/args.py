@@ -56,7 +56,6 @@ def add_input_group(parser):
     :param parser: :class:`argparse.ArgumentParser`
     :return: Resulting argument group
     """
-
     group = parser.add_argument_group("Input", "Source images to merge")
 
     # TODO(xion): support URLs as IMAGE arguments

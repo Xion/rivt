@@ -1,2 +1,4 @@
 Pillow
 images2gif
+envoy
+six
